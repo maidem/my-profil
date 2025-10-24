@@ -202,3 +202,24 @@ task('deploy:setup', function () {
     
     writeln("✅ Deploy setup completed (allows existing current directory)");
 });
+
+// Überschreibe deploy:lock um Dateiname-Probleme zu vermeiden
+desc('Lock deployment');
+task('deploy:lock', function () {
+    $lockFile = '.dep/deploy.lock';
+    
+    if (test("[ -f $lockFile ]")) {
+        throw new \Exception("Deploy is locked! Remove $lockFile to unlock.");
+    }
+    
+    run("echo 'locked' > $lockFile");
+    writeln("✅ Deploy locked");
+});
+
+// Überschreibe deploy:unlock 
+desc('Unlock deployment');
+task('deploy:unlock', function () {
+    $lockFile = '.dep/deploy.lock';
+    run("rm -f $lockFile");
+    writeln("✅ Deploy unlocked");
+});
