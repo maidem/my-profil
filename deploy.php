@@ -194,6 +194,9 @@ task('deploy:setup', function () {
     // Räume alte/fehlerhafte Releases auf
     run('rm -rf releases/*');
     run('rm -f .dep/releases_log .dep/latest_release');
+    
+    // Entferne altes current Verzeichnis/Symlink für sauberen Start
+    run('rm -rf current');
 });
 
 // Einfache Lock-Mechanismus ohne komplizierte Dateinamen
