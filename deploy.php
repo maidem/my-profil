@@ -195,6 +195,10 @@ task('deploy:setup', function () {
     
     // Stelle sicher, dass .dep beschreibbar ist
     run("chmod 755 .dep");
+    run("chmod 777 .dep");  // Vollständige Berechtigungen für Lock-Files
+    
+    // Test ob Lock-Files erstellt werden können
+    run("touch .dep/test.lock && rm .dep/test.lock");
     
     writeln("✅ Deploy setup completed (allows existing current directory)");
 });
