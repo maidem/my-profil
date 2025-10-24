@@ -22,7 +22,7 @@ jobs:
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
-          php-version: "8.2"
+          php-version: "8.3"
           tools: composer
 
       - name: Install Composer dependencies (incl. Deployer)
@@ -33,9 +33,6 @@ jobs:
 
       - name: Build Vite assets
         run: npm run build
-
-      - name: Prepare production dependencies (without dev tools)
-        run: composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader
 
       - name: Configure SSH
         run: |
@@ -53,4 +50,7 @@ jobs:
         run: |
           eval "$(ssh-agent -s)"
           ssh-add ~/.ssh/deploy-portfolio
+          # Deploy mit allen Dependencies (inkl. Deployer)
           vendor/bin/dep deploy live --no-interaction -vvv
+          # Danach production dependencies für den Server vorbereiten
+          composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader
