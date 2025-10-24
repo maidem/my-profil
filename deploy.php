@@ -227,31 +227,35 @@ task('deploy:unlock', function () {
 // Überschreibe deploy:release um .dep Dateierstellung zu reparieren
 desc('Prepare release');
 task('deploy:release', function () {
-    cd('{{deploy_path}}');
+    $deployPath = get('deploy_path');
     
     // Debug: Zeige aktuelles Verzeichnis und Berechtigungen
-    run('pwd');
-    run('ls -la .dep/');
-    run('whoami');
+    run("cd $deployPath && pwd");
+    run("cd $deployPath && ls -la");
+    run("cd $deployPath && whoami");
+    
+    // Stelle sicher, dass wir im richtigen Verzeichnis sind UND .dep existiert
+    run("cd $deployPath && [ -d .dep ] || mkdir -p .dep");
+    run("cd $deployPath && chmod 777 .dep");
     
     // Hole aktuelle Release-Nummer (aus shared statt .dep)
     $latestReleaseFile = 'shared/latest_release';
     $currentRelease = 1;
     
-    if (test("[ -f $latestReleaseFile ]")) {
-        $currentRelease = (int) run("cat $latestReleaseFile") + 1;
+    if (test("cd $deployPath && [ -f $latestReleaseFile ]")) {
+        $currentRelease = (int) run("cd $deployPath && cat $latestReleaseFile") + 1;
     }
     
     $releasePath = "releases/$currentRelease";
     
     // Erstelle Release-Verzeichnis
-    run("mkdir -p $releasePath");
+    run("cd $deployPath && mkdir -p $releasePath");
     
     // Speichere Release-Nummer im shared Verzeichnis (das ist beschreibbar)
-    run("echo '$currentRelease' > $latestReleaseFile");
+    run("cd $deployPath && echo '$currentRelease' > $latestReleaseFile");
     
     // Setze release_path Variable für folgende Tasks
-    set('release_path', "{{deploy_path}}/$releasePath");
+    set('release_path', "$deployPath/$releasePath");
     set('release_name', $currentRelease);
     
     writeln("✅ Release $currentRelease prepared");
