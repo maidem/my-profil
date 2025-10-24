@@ -136,17 +136,7 @@ task('fix:permissions', function () {
 // --------------------------------------
 // Hooks
 // --------------------------------------
-after('deploy:update_code', 'deploy:vendors');
-after('deploy:vendors', 'deploy:shared_custom');
-after('deploy:shared_custom', 'fix:permissions');
-after('deploy:symlink', 'typo3:cache:flush');
 after('deploy:failed', 'deploy:unlock');
-
-// ACL Task deaktivieren (nicht supported auf Shared Hosting)
-before('deploy:writable', 'fix:permissions');
-task('deploy:writable', function () {
-    writeln('Skipping default deploy:writable (Shared Hosting)');
-});
 
 // --------------------------------------
 // Rollback Task!
