@@ -25,14 +25,14 @@ jobs:
           php-version: "8.3"
           tools: composer
 
+      - name: Install Composer dependencies (incl. Deployer)
+        run: composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader
+
       - name: Install Node dependencies
         run: npm install
 
       - name: Build Vite assets
         run: npm run build
-
-      - name: Install Composer dependencies (incl. Deployer)
-        run: composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader
 
       - name: Configure SSH
         run: |
