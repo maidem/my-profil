@@ -2,36 +2,24 @@
 namespace Deployer;
 
 require 'recipe/common.php';
-require 'recipe/composer.php';
 
-// --------------------------------------
-// Projekt-Konfiguration
-// --------------------------------------
 set('application', 'my-profil');
 set('repository', 'git@github.com:maidem/my-profil.git');
-set('branch', function () {
-    return getenv('DEPLOY_BRANCH') ?: 'main';
-});
 
-// PHP-Binary & Composer-Optionen
-set('bin/php', '/usr/bin/php');
-set('composer_options', '--no-dev --optimize-autoloader');
-set('keep_releases', 5);
-set('allow_anonymous_stats', false);
+set('branch', getenv('DEPLOY_BRANCH') ?: 'main');
+set('bin/php', '/usr/bin/php8.3');
+set('ssh_private_key', getenv('DEPLOY_SSH_KEY'));
 
-// --------------------------------------
-// TYPO3-spezifische Verzeichnisse
-// --------------------------------------
 set('shared_dirs', [
     'var',
     'public/fileadmin',
     'public/uploads',
-    'public/typo3temp',
+    'public/typo3temp'
 ]);
 
 set('shared_files', [
-    '.env',
     'config/system/additional.php',
+    '.env'
 ]);
 
 set('writable_dirs', [
@@ -40,48 +28,49 @@ set('writable_dirs', [
     'public/uploads',
     'public/typo3temp',
 ]);
+set('allow_anonymous_stats', false);
+set('keep_releases', 5);
 
-// --------------------------------------
-// Server-Definition aus GitHub Secrets
-// --------------------------------------
 host('live')
     ->set('hostname', getenv('DEPLOY_HOST'))
     ->set('remote_user', getenv('DEPLOY_SSH_USER'))
     ->set('deploy_path', getenv('DEPLOY_PATH'))
-    ->set('forward_agent', true)
-    ->set('writable_mode', 'chmod')
-    ->set('writable_use_sudo', false)
-    ->set('multiplexing', false);
+    ->set('ssh_options', [
+        'ControlMaster' => 'no',
+        'ControlPersist' => 'no',
+        'ForwardAgent' => 'yes',
+        'StrictHostKeyChecking' => 'no',
+    ]);
 
-// --------------------------------------
-// Haupt-Task für Deployment
-// --------------------------------------
-desc('Deploy TYPO3 Projekt');
-task('deploy', [
-    'deploy:prepare',
-    'deploy:release',
-    'deploy:update_code',
-    'deploy:shared',
-    'deploy:vendors',      // führt composer install aus
-    'deploy:writable',
-    'deploy:symlink',
-    'deploy:cleanup',
-]);
-
-// --------------------------------------
-// Hooks & Extras
-// --------------------------------------
 after('deploy:failed', 'deploy:unlock');
 
-// TYPO3 Cache leeren nach Deployment
-desc('Flush TYPO3 cache');
-task('typo3:cache:flush', function () {
-    run('cd {{current_path}} && {{bin/php}} vendor/bin/typo3 cache:flush || true');
+// Custom Tasks
+desc('Initiales Setup des Zielservers');
+task('deploy:setup', function () {
+    run('[ -d {{deploy_path}} ] || mkdir -p {{deploy_path}}');
+    run('mkdir -p {{deploy_path}}/.dep {{deploy_path}}/releases {{deploy_path}}/shared');
+    run('chmod 755 {{deploy_path}}/.dep');
+    run('rm -rf {{deploy_path}}/releases/* {{deploy_path}}/.dep/releases_log {{deploy_path}}/.dep/latest_release');
+    run('rm -rf {{deploy_path}}/current');
 });
-after('deploy:symlink', 'typo3:cache:flush');
 
-// Besitzerrechte korrigieren
-task('fix:permissions', function () {
-    run('sudo chown -R www-data:www-data {{deploy_path}}');
+task('deploy:lock', function () {
+    if (test('[ -f {{deploy_path}}/.dep/deploy.lock ]')) {
+        throw new \Exception('Deploy ist gesperrt!');
+    }
+    run('touch {{deploy_path}}/.dep/deploy.lock');
 });
-after('deploy:symlink', 'fix:permissions');
+
+task('deploy:unlock', function () {
+    run('rm -f {{deploy_path}}/.dep/deploy.lock');
+});
+
+task('deploy:writable', function () {
+    run('mkdir -p {{release_path}}/var {{release_path}}/public/fileadmin {{release_path}}/public/uploads {{release_path}}/public/typo3temp');
+    run('chmod -R 755 {{release_path}}/var {{release_path}}/public/fileadmin {{release_path}}/public/uploads {{release_path}}/public/typo3temp');
+});
+
+task('deploy:symlink', function () {
+    run('rm -rf {{deploy_path}}/current');
+    run('ln -nfs {{deploy_path}}/releases/{{release_name}} {{deploy_path}}/current');
+});
