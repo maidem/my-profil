@@ -32,10 +32,10 @@ jobs:
       - name: Run Deployer
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
-          DEPLOY_USER: ${{ secrets.DEPLOY_SSH_USER }}
+          DEPLOY_SSH_USER: ${{ secrets.DEPLOY_SSH_USER }}
           DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
           DEPLOY_BRANCH: ${{ secrets.DEPLOY_BRANCH }}
-          SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
         run: |
           eval "$(ssh-agent -s)"
           ssh-add ~/.ssh/id_deploy

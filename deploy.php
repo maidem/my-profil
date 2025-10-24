@@ -10,7 +10,7 @@ set('branch', function () {
     return getenv('DEPLOY_BRANCH') ?: 'main';
 });
 set('bin/php', '/usr/bin/php8.3');
-set('ssh_private_key', getenv('SSH_PRIVATE_KEY'));
+set('ssh_private_key', getenv('DEPLOY_SSH_KEY'));
 
 // TYPO3-spezifische Verzeichnisse
 set('shared_dirs', [
