@@ -3,7 +3,7 @@ namespace Deployer;
 
 require 'recipe/common.php';
 
-// Projektinfos
+// Projekt-Konfiguration
 set('application', 'my-profil');
 set('repository', 'git@github.com:maidem/my-profil.git');
 set('branch', function () {
@@ -12,7 +12,7 @@ set('branch', function () {
 set('bin/php', '/usr/bin/php8.3');
 set('ssh_private_key', getenv('SSH_PRIVATE_KEY'));
 
-// TYPO3 Struktur
+// TYPO3-spezifische Verzeichnisse
 set('shared_dirs', [
     'public/fileadmin',
     'public/uploads',
@@ -24,7 +24,7 @@ set('shared_dirs', [
 set('shared_files', [
     'config/system/additional.php',
     'public/.htaccess',
-    'public/.user.ini'
+    'public/.user.ini',
 ]);
 
 set('writable_dirs', [
@@ -36,15 +36,11 @@ set('writable_dirs', [
 set('allow_anonymous_stats', false);
 set('keep_releases', 5);
 
-// Server-Host
+// Host-Konfiguration mit Fallbacks
 host('live')
-    ->set('hostname', getenv('DEPLOY_HOST'))
-    ->set('remote_user', getenv('DEPLOY_SSH_USER'))
-    ->set('deploy_path', getenv('DEPLOY_PATH'))
-    ->set('ssh_options', [
-        'ForwardAgent' => true,
-        'StrictHostKeyChecking' => false,
-    ]);
+    ->set('hostname', getenv('DEPLOY_HOST') ?: 'example.com')
+    ->set('remote_user', getenv('DEPLOY_SSH_USER') ?: 'deployer')
+    ->set('deploy_path', getenv('DEPLOY_PATH') ?: '/var/www/html');
 
 // TYPO3 Cache leeren
 desc('Flush TYPO3 cache');
@@ -64,12 +60,16 @@ task('fix:permissions', function () {
         '{{deploy_path}}/shared/public/typo3temp',
         '{{deploy_path}}/shared/var',
     ];
+
     foreach ($sharedDirs as $dir) {
         run("if [ -d $dir ]; then find $dir -type d -exec chmod 2770 {} +; find $dir -type f -exec chmod 0660 {} +; fi");
     }
 
-    // Optional Gruppenzuweisung:
+    // Optional für webserver group:
     // run('chown -R :www-data {{release_path}}');
+    // foreach ($sharedDirs as $dir) {
+    //     run("if [ -d $dir ]; then chown -R :www-data $dir; fi");
+    // }
 });
 
 // Hooks
@@ -80,7 +80,7 @@ after('deploy:symlink', 'typo3:cache:flush');
 after('deploy:failed', 'deploy:unlock');
 after('deploy:update_code', 'deploy:vendors');
 
-// Rollback
+// Rollback Task
 desc('Rollback to previous release');
 task('rollback', function () {
     run('cd {{deploy_path}} && ln -nfs $(ls -td releases/* | sed -n 2p) current');
