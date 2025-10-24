@@ -3,74 +3,87 @@ namespace Deployer;
 
 require 'recipe/common.php';
 
+// Projektinfos
 set('application', 'my-profil');
 set('repository', 'git@github.com:maidem/my-profil.git');
-
-set('branch', getenv('DEPLOY_BRANCH') ?: 'main');
+set('branch', function () {
+    return getenv('DEPLOY_BRANCH') ?: 'main';
+});
 set('bin/php', '/usr/bin/php8.3');
-set('ssh_private_key', getenv('DEPLOY_SSH_KEY'));
+set('ssh_private_key', getenv('SSH_PRIVATE_KEY'));
 
+// TYPO3 Struktur
 set('shared_dirs', [
-    'var',
     'public/fileadmin',
     'public/uploads',
-    'public/typo3temp'
+    'public/typo3temp',
+    'var',
+    'config/sites',
 ]);
 
 set('shared_files', [
     'config/system/additional.php',
-    '.env'
+    'public/.htaccess',
+    'public/.user.ini'
 ]);
 
 set('writable_dirs', [
     'var',
     'public/fileadmin',
     'public/uploads',
-    'public/typo3temp',
 ]);
+
 set('allow_anonymous_stats', false);
 set('keep_releases', 5);
 
+// Server-Host
 host('live')
     ->set('hostname', getenv('DEPLOY_HOST'))
     ->set('remote_user', getenv('DEPLOY_SSH_USER'))
     ->set('deploy_path', getenv('DEPLOY_PATH'))
     ->set('ssh_options', [
-        'ControlMaster' => 'no',
-        'ControlPersist' => 'no',
-        'ForwardAgent' => 'yes',
-        'StrictHostKeyChecking' => 'no',
+        'ForwardAgent' => true,
+        'StrictHostKeyChecking' => false,
     ]);
 
-after('deploy:failed', 'deploy:unlock');
-
-// Custom Tasks
-desc('Initiales Setup des Zielservers');
-task('deploy:setup', function () {
-    run('[ -d {{deploy_path}} ] || mkdir -p {{deploy_path}}');
-    run('mkdir -p {{deploy_path}}/.dep {{deploy_path}}/releases {{deploy_path}}/shared');
-    run('chmod 755 {{deploy_path}}/.dep');
-    run('rm -rf {{deploy_path}}/releases/* {{deploy_path}}/.dep/releases_log {{deploy_path}}/.dep/latest_release');
-    run('rm -rf {{deploy_path}}/current');
+// TYPO3 Cache leeren
+desc('Flush TYPO3 cache');
+task('typo3:cache:flush', function () {
+    run('{{bin/php}} {{current_path}}/vendor/bin/typo3 cache:flush || true');
 });
 
-task('deploy:lock', function () {
-    if (test('[ -f {{deploy_path}}/.dep/deploy.lock ]')) {
-        throw new \Exception('Deploy ist gesperrt!');
+// Rechte setzen
+desc('Set correct permissions');
+task('fix:permissions', function () {
+    run('find {{release_path}} -type d -exec chmod 2770 {} +');
+    run('find {{release_path}} -type f -exec chmod 0660 {} +');
+
+    $sharedDirs = [
+        '{{deploy_path}}/shared/public/fileadmin',
+        '{{deploy_path}}/shared/public/uploads',
+        '{{deploy_path}}/shared/public/typo3temp',
+        '{{deploy_path}}/shared/var',
+    ];
+    foreach ($sharedDirs as $dir) {
+        run("if [ -d $dir ]; then find $dir -type d -exec chmod 2770 {} +; find $dir -type f -exec chmod 0660 {} +; fi");
     }
-    run('touch {{deploy_path}}/.dep/deploy.lock');
+
+    // Optional Gruppenzuweisung:
+    // run('chown -R :www-data {{release_path}}');
 });
 
-task('deploy:unlock', function () {
-    run('rm -f {{deploy_path}}/.dep/deploy.lock');
-});
+// Hooks
+after('deploy:prepare', 'fix:permissions');
+after('deploy:symlink', 'fix:permissions');
+after('deploy:success', 'fix:permissions');
+after('deploy:symlink', 'typo3:cache:flush');
+after('deploy:failed', 'deploy:unlock');
+after('deploy:update_code', 'deploy:vendors');
 
-task('deploy:writable', function () {
-    run('mkdir -p {{release_path}}/var {{release_path}}/public/fileadmin {{release_path}}/public/uploads {{release_path}}/public/typo3temp');
-    run('chmod -R 755 {{release_path}}/var {{release_path}}/public/fileadmin {{release_path}}/public/uploads {{release_path}}/public/typo3temp');
-});
-
-task('deploy:symlink', function () {
-    run('rm -rf {{deploy_path}}/current');
-    run('ln -nfs {{deploy_path}}/releases/{{release_name}} {{deploy_path}}/current');
+// Rollback
+desc('Rollback to previous release');
+task('rollback', function () {
+    run('cd {{deploy_path}} && ln -nfs $(ls -td releases/* | sed -n 2p) current');
+    invoke('fix:permissions');
+    invoke('typo3:cache:flush');
 });
