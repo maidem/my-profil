@@ -181,82 +181,27 @@ task('rollback', function () {
 // Hooks
 // --------------------------------------
 
-// Überschreibe Standard deploy:setup um current-Verzeichnis zu erlauben
-desc('Prepare host for deploy (custom for existing installations)');
+// Nur die absolut notwendigen Overrides
+desc('Prepare host for deploy');
 task('deploy:setup', function () {
-    $deployPath = get('deploy_path');
-    
-    // Erstelle grundlegende Verzeichnisse
-    run("[ -d $deployPath ] || mkdir -p $deployPath");
-    run("cd $deployPath");
-    run("[ -d .dep ] || mkdir -p .dep");
-    run("[ -d releases ] || mkdir -p releases");
-    run("[ -d shared ] || mkdir -p shared");
-    
-    // Stelle sicher, dass .dep beschreibbar ist
-    run("chmod 755 .dep");
-    run("chmod 777 .dep");  // Vollständige Berechtigungen für Lock-Files
-    
-    // Test ob Lock-Files erstellt werden können
-    run("touch .dep/test.lock && rm .dep/test.lock");
-    
-    writeln("✅ Deploy setup completed (allows existing current directory)");
+    run('[ -d {{deploy_path}} ] || mkdir -p {{deploy_path}}');
+    cd('{{deploy_path}}');
+    run('[ -d .dep ] || mkdir -p .dep');
+    run('[ -d releases ] || mkdir -p releases');  
+    run('[ -d shared ] || mkdir -p shared');
+    run('chmod 755 .dep');
 });
 
-// Überschreibe deploy:lock um Dateiname-Probleme zu vermeiden
-desc('Lock deployment');
+// Einfache Lock-Mechanismus ohne komplizierte Dateinamen
 task('deploy:lock', function () {
-    $lockFile = '.dep/deploy.lock';
-    
-    if (test("[ -f $lockFile ]")) {
-        throw new \Exception("Deploy is locked! Remove $lockFile to unlock.");
+    cd('{{deploy_path}}');
+    if (test('[ -f .dep/deploy.lock ]')) {
+        throw new \Exception('Deploy is locked!');
     }
-    
-    run("echo 'locked' > $lockFile");
-    writeln("✅ Deploy locked");
+    run('touch .dep/deploy.lock');
 });
 
-// Überschreibe deploy:unlock 
-desc('Unlock deployment');
 task('deploy:unlock', function () {
-    $lockFile = '.dep/deploy.lock';
-    run("rm -f $lockFile");
-    writeln("✅ Deploy unlocked");
-});
-
-// Überschreibe deploy:release um .dep Dateierstellung zu reparieren
-desc('Prepare release');
-task('deploy:release', function () {
-    $deployPath = get('deploy_path');
-    
-    // Debug: Zeige aktuelles Verzeichnis und Berechtigungen
-    run("cd $deployPath && pwd");
-    run("cd $deployPath && ls -la");
-    run("cd $deployPath && whoami");
-    
-    // Stelle sicher, dass wir im richtigen Verzeichnis sind UND .dep existiert
-    run("cd $deployPath && [ -d .dep ] || mkdir -p .dep");
-    run("cd $deployPath && chmod 777 .dep");
-    
-    // Hole aktuelle Release-Nummer (aus shared statt .dep)
-    $latestReleaseFile = 'shared/latest_release';
-    $currentRelease = 1;
-    
-    if (test("cd $deployPath && [ -f $latestReleaseFile ]")) {
-        $currentRelease = (int) run("cd $deployPath && cat $latestReleaseFile") + 1;
-    }
-    
-    $releasePath = "releases/$currentRelease";
-    
-    // Erstelle Release-Verzeichnis
-    run("cd $deployPath && mkdir -p $releasePath");
-    
-    // Speichere Release-Nummer im shared Verzeichnis (das ist beschreibbar)
-    run("cd $deployPath && echo '$currentRelease' > $latestReleaseFile");
-    
-    // Setze release_path Variable für folgende Tasks
-    set('release_path', "$deployPath/$releasePath");
-    set('release_name', $currentRelease);
-    
-    writeln("✅ Release $currentRelease prepared");
+    cd('{{deploy_path}}');
+    run('rm -f .dep/deploy.lock');
 });
