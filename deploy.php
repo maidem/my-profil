@@ -216,6 +216,21 @@ task('deploy:prepare_existing', function () {
     }
 });
 
+// Überschreibe Standard deploy:setup um current-Verzeichnis zu erlauben
+desc('Prepare host for deploy (custom for existing installations)');
+task('deploy:setup', function () {
+    $deployPath = get('deploy_path');
+    
+    // Erstelle grundlegende Verzeichnisse
+    run("[ -d $deployPath ] || mkdir -p $deployPath");
+    run("cd $deployPath");
+    run("[ -d .dep ] || mkdir .dep");
+    run("[ -d releases ] || mkdir releases");
+    run("[ -d shared ] || mkdir shared");
+    
+    writeln("✅ Deploy setup completed (allows existing current directory)");
+});
+
 // Zusätzlicher Task: Entferne current-Verzeichnis vor Symlink
 desc('Remove current directory before creating symlink');
 task('deploy:remove_current', function () {
