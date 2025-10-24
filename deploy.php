@@ -216,5 +216,20 @@ task('deploy:prepare_existing', function () {
     }
 });
 
+// Zusätzlicher Task: Entferne current-Verzeichnis vor Symlink
+desc('Remove current directory before creating symlink');
+task('deploy:remove_current', function () {
+    $currentPath = get('deploy_path') . '/current';
+    
+    // Nur entfernen wenn es ein Verzeichnis ist (nicht ein Symlink)
+    $isDir = run("if [ -d $currentPath ] && [ ! -L $currentPath ]; then echo 'yes'; fi") === 'yes';
+    
+    if ($isDir) {
+        writeln("🗑️  Removing current directory to create symlink");
+        run("rm -rf $currentPath");
+    }
+});
+
 // Vor deploy:symlink ausführen
 before('deploy:symlink', 'deploy:prepare_existing');
+before('deploy:symlink', 'deploy:remove_current');
