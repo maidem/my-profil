@@ -58,7 +58,7 @@ host('live')
 // --------------------------------------
 after('deploy:failed', 'deploy:unlock');
 
-// Nur die absolut notwendigen Overrides
+// Overrides
 desc('Prepare host for deploy');
 task('deploy:setup', function () {
     run('[ -d {{deploy_path}} ] || mkdir -p {{deploy_path}}');
