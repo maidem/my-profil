@@ -190,6 +190,10 @@ task('deploy:setup', function () {
     run('[ -d releases ] || mkdir -p releases');  
     run('[ -d shared ] || mkdir -p shared');
     run('chmod 755 .dep');
+    
+    // Räume alte/fehlerhafte Releases auf
+    run('rm -rf releases/*');
+    run('rm -f .dep/releases_log .dep/latest_release');
 });
 
 // Einfache Lock-Mechanismus ohne komplizierte Dateinamen
