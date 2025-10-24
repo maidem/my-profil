@@ -1,0 +1,53 @@
+name: Deploy to Live Server
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Set up PHP
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          tools: composer
+
+      - name: Install Node dependencies
+        run: npm install
+
+      - name: Build Vite assets
+        run: npm run build
+
+      - name: Install Composer dependencies (incl. Deployer)
+        run: composer install --no-interaction --prefer-dist --no-dev --optimize-autoloader
+
+      - name: Configure SSH
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy-portfolio
+          chmod 600 ~/.ssh/deploy-portfolio
+          ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
+
+      - name: Run Deployer
+        env:
+          DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+          DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+        run: |
+          eval "$(ssh-agent -s)"
+          ssh-add ~/.ssh/deploy-portfolio
+          vendor/bin/dep deploy live --no-interaction -vvv

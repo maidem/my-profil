@@ -1,0 +1,17 @@
+base: 'https://my-profil.ddev.site'
+dependencies:
+  - typo3/fluid-styled-content
+  - xmwhd/profil
+languages:
+  -
+    title: German
+    enabled: true
+    locale: de_DE.utf8
+    hreflang: ''
+    base: /
+    websiteTitle: ''
+    navigationTitle: ''
+    flag: de
+    languageId: 0
+rootPageId: 1
+websiteTitle: ''
