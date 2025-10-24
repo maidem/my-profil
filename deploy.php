@@ -212,3 +212,14 @@ task('deploy:unlock', function () {
     cd('{{deploy_path}}');
     run('rm -f .dep/deploy.lock');
 });
+
+// Fix für Symlink-Problem: Räume current vor Symlink auf
+task('deploy:symlink', function () {
+    cd('{{deploy_path}}');
+    
+    // Entferne bestehende current (egal ob Verzeichnis oder Symlink)
+    run('rm -rf current');
+    
+    // Erstelle Symlink zum aktuellen Release
+    run('ln -nfs {{release_name}} current');
+});
