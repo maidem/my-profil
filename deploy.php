@@ -178,43 +178,8 @@ task('rollback', function () {
 });
 
 // --------------------------------------
-// Einmalige Vorbereitung: Bereitet vorhandenes current-Verzeichnis für Deployer vor
+// Hooks
 // --------------------------------------
-desc('Prepare existing current directory for deployment');
-task('deploy:prepare_existing', function () {
-    $deployPath = get('deploy_path');
-    $currentPath = "$deployPath/current";
-    $sharedPath = "$currentPath/shared";
-    
-    // Prüfe ob current existiert und ein Verzeichnis (nicht ein Symlink)
-    $isDir = run("if [ -d $currentPath ] && [ ! -L $currentPath ]; then echo 'yes'; fi") === 'yes';
-    
-    if ($isDir) {
-        writeln("⚠️  Found existing 'current' directory (not a symlink)");
-        
-        // Prüfe ob shared-Verzeichnis existiert
-        $hasShared = run("if [ -d $sharedPath ]; then echo 'yes'; fi") === 'yes';
-        
-        if ($hasShared) {
-            writeln("✅ Found existing shared directory - preserving it");
-            // Verschiebe shared temporär raus
-            run("mv $sharedPath $deployPath/shared_temp");
-        }
-        
-        // Verschiebe das alte current-Verzeichnis zur Sicherheit
-        writeln("📦 Moving old current directory to backup...");
-        run("mv $currentPath {$currentPath}_backup_$(date +%Y%m%d_%H%M%S)");
-        
-        if ($hasShared) {
-            // Erstelle neues current-Verzeichnis und verschiebe shared zurück
-            run("mkdir -p $currentPath");
-            run("mv $deployPath/shared_temp $sharedPath");
-            writeln("✅ Restored shared directory to current/shared");
-        }
-        
-        writeln("✅ Preparation complete, deployment can continue");
-    }
-});
 
 // Überschreibe Standard deploy:setup um current-Verzeichnis zu erlauben
 desc('Prepare host for deploy (custom for existing installations)');
@@ -228,7 +193,7 @@ task('deploy:setup', function () {
     run("[ -d releases ] || mkdir releases");
     run("[ -d shared ] || mkdir shared");
     
-    writeln("✅ Deploy setup completed (allows existing current directory)");
+    writeln(" Deploy setup completed (allows existing current directory)");
 });
 
 // Zusätzlicher Task: Entferne current-Verzeichnis vor Symlink
