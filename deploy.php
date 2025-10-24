@@ -65,7 +65,7 @@ task('deploy', [
     'deploy:vendors',      // führt composer install aus
     'deploy:writable',
     'deploy:symlink',
-    'cleanup',
+    'deploy:cleanup',
 ]);
 
 // --------------------------------------
