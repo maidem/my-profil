@@ -2,112 +2,86 @@
 namespace Deployer;
 
 require 'recipe/common.php';
+require 'recipe/composer.php';
 
-// --- Projekt ---
+// --------------------------------------
+// Projekt-Konfiguration
+// --------------------------------------
 set('application', 'my-profil');
 set('repository', 'git@github.com:maidem/my-profil.git');
-
-// Branch aus Secret, sonst main
 set('branch', function () {
     return getenv('DEPLOY_BRANCH') ?: 'main';
 });
 
-// PHP-Binary auf dem Server
+// PHP-Binary & Composer-Optionen
 set('bin/php', '/usr/bin/php');
+set('composer_options', '--no-dev --optimize-autoloader');
+set('keep_releases', 5);
+set('allow_anonymous_stats', false);
 
-// SSH Key aus GitHub Secret
-set('ssh_private_key', getenv('DEPLOY_SSH_KEY'));
-
-// Standard TYPO3 shared Konfiguration
+// --------------------------------------
+// TYPO3-spezifische Verzeichnisse
+// --------------------------------------
 set('shared_dirs', [
     'var',
     'public/fileadmin',
     'public/uploads',
-    'public/typo3temp'
+    'public/typo3temp',
 ]);
 
 set('shared_files', [
+    '.env',
     'config/system/additional.php',
-    '.env'
 ]);
 
-// Deployer-Standard writable dirs
 set('writable_dirs', [
     'var',
     'public/fileadmin',
-    'public/uploads', 
+    'public/uploads',
     'public/typo3temp',
 ]);
-set('allow_anonymous_stats', false);
-set('keep_releases', 5);
-
-// --- Host Definition ---
-host('live')
-    ->set('hostname', getenv('DEPLOY_HOST') ?: 'example.com')
-    ->set('remote_user', getenv('DEPLOY_USER') ?: 'deployer')
-    ->set('deploy_path', getenv('DEPLOY_PATH') ?: '/var/www/maidem.de/')
-    ->set('ssh_options', [
-        'ControlMaster' => 'no',
-        'ControlPersist' => 'no',
-        'ForwardAgent' => 'yes',
-        'StrictHostKeyChecking' => 'no',
-    ]);
 
 // --------------------------------------
-// Hooks
+// Server-Definition aus GitHub Secrets
+// --------------------------------------
+host('live')
+    ->set('hostname', getenv('DEPLOY_HOST'))
+    ->set('remote_user', getenv('DEPLOY_SSH_USER'))
+    ->set('deploy_path', getenv('DEPLOY_PATH'))
+    ->set('forward_agent', true)
+    ->set('writable_mode', 'chmod')
+    ->set('writable_use_sudo', false)
+    ->set('multiplexing', false);
+
+// --------------------------------------
+// Haupt-Task für Deployment
+// --------------------------------------
+desc('Deploy TYPO3 Projekt');
+task('deploy', [
+    'deploy:prepare',
+    'deploy:release',
+    'deploy:update_code',
+    'deploy:shared',
+    'deploy:vendors',      // führt composer install aus
+    'deploy:writable',
+    'deploy:symlink',
+    'cleanup',
+]);
+
+// --------------------------------------
+// Hooks & Extras
 // --------------------------------------
 after('deploy:failed', 'deploy:unlock');
 
-// Overrides
-desc('Prepare host for deploy');
-task('deploy:setup', function () {
-    run('[ -d {{deploy_path}} ] || mkdir -p {{deploy_path}}');
-    cd('{{deploy_path}}');
-    run('[ -d .dep ] || mkdir -p .dep');
-    run('[ -d releases ] || mkdir -p releases');  
-    run('[ -d shared ] || mkdir -p shared');
-    run('chmod 755 .dep');
-    
-    // Räume alte/fehlerhafte Releases auf
-    run('rm -rf releases/*');
-    run('rm -f .dep/releases_log .dep/latest_release');
-    
-    // Entferne altes current Verzeichnis/Symlink für sauberen Start
-    run('rm -rf current');
+// TYPO3 Cache leeren nach Deployment
+desc('Flush TYPO3 cache');
+task('typo3:cache:flush', function () {
+    run('cd {{current_path}} && {{bin/php}} vendor/bin/typo3 cache:flush || true');
 });
+after('deploy:symlink', 'typo3:cache:flush');
 
-// Einfache Lock-Mechanismus ohne komplizierte Dateinamen
-task('deploy:lock', function () {
-    cd('{{deploy_path}}');
-    if (test('[ -f .dep/deploy.lock ]')) {
-        throw new \Exception('Deploy is locked!');
-    }
-    run('touch .dep/deploy.lock');
+// Besitzerrechte korrigieren
+task('fix:permissions', function () {
+    run('sudo chown -R www-data:www-data {{deploy_path}}');
 });
-
-task('deploy:unlock', function () {
-    cd('{{deploy_path}}');
-    run('rm -f .dep/deploy.lock');
-});
-
-// Einfache writable Task ohne ACL-Probleme
-task('deploy:writable', function () {
-    cd('{{release_path}}');
-    
-    // Erstelle Verzeichnisse falls sie nicht existieren
-    run('mkdir -p var public/fileadmin public/uploads public/typo3temp');
-    
-    // Setze einfache Berechtigungen ohne ACL
-    run('chmod -R 755 var public/fileadmin public/uploads public/typo3temp');
-});
-
-// Fix für Symlink-Problem: Räume current vor Symlink auf
-task('deploy:symlink', function () {
-    cd('{{deploy_path}}');
-    
-    // Entferne bestehende current (egal ob Verzeichnis oder Symlink)
-    run('rm -rf current');
-    
-    // Erstelle Symlink zum aktuellen Release (relativer Pfad zum releases/ Verzeichnis)
-    run('ln -nfs releases/{{release_name}} current');
-});
+after('deploy:symlink', 'fix:permissions');
