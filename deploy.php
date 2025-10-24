@@ -189,9 +189,12 @@ task('deploy:setup', function () {
     // Erstelle grundlegende Verzeichnisse
     run("[ -d $deployPath ] || mkdir -p $deployPath");
     run("cd $deployPath");
-    run("[ -d .dep ] || mkdir .dep");
-    run("[ -d releases ] || mkdir releases");
-    run("[ -d shared ] || mkdir shared");
+    run("[ -d .dep ] || mkdir -p .dep");
+    run("[ -d releases ] || mkdir -p releases");
+    run("[ -d shared ] || mkdir -p shared");
     
-    writeln(" Deploy setup completed (allows existing current directory)");
+    // Stelle sicher, dass .dep beschreibbar ist
+    run("chmod 755 .dep");
+    
+    writeln("✅ Deploy setup completed (allows existing current directory)");
 });
