@@ -229,8 +229,13 @@ desc('Prepare release');
 task('deploy:release', function () {
     cd('{{deploy_path}}');
     
-    // Hole aktuelle Release-Nummer
-    $latestReleaseFile = '.dep/latest_release';
+    // Debug: Zeige aktuelles Verzeichnis und Berechtigungen
+    run('pwd');
+    run('ls -la .dep/');
+    run('whoami');
+    
+    // Hole aktuelle Release-Nummer (aus shared statt .dep)
+    $latestReleaseFile = 'shared/latest_release';
     $currentRelease = 1;
     
     if (test("[ -f $latestReleaseFile ]")) {
@@ -242,7 +247,7 @@ task('deploy:release', function () {
     // Erstelle Release-Verzeichnis
     run("mkdir -p $releasePath");
     
-    // Speichere Release-Nummer (mit korrekten Berechtigungen)
+    // Speichere Release-Nummer im shared Verzeichnis (das ist beschreibbar)
     run("echo '$currentRelease' > $latestReleaseFile");
     
     // Setze release_path Variable für folgende Tasks
