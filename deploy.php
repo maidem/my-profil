@@ -223,3 +223,31 @@ task('deploy:unlock', function () {
     run("rm -f $lockFile");
     writeln("✅ Deploy unlocked");
 });
+
+// Überschreibe deploy:release um .dep Dateierstellung zu reparieren
+desc('Prepare release');
+task('deploy:release', function () {
+    cd('{{deploy_path}}');
+    
+    // Hole aktuelle Release-Nummer
+    $latestReleaseFile = '.dep/latest_release';
+    $currentRelease = 1;
+    
+    if (test("[ -f $latestReleaseFile ]")) {
+        $currentRelease = (int) run("cat $latestReleaseFile") + 1;
+    }
+    
+    $releasePath = "releases/$currentRelease";
+    
+    // Erstelle Release-Verzeichnis
+    run("mkdir -p $releasePath");
+    
+    // Speichere Release-Nummer (mit korrekten Berechtigungen)
+    run("echo '$currentRelease' > $latestReleaseFile");
+    
+    // Setze release_path Variable für folgende Tasks
+    set('release_path', "{{deploy_path}}/$releasePath");
+    set('release_name', $currentRelease);
+    
+    writeln("✅ Release $currentRelease prepared");
+});
