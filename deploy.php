@@ -61,11 +61,9 @@ task('typo3:cache:flush', function () {
 // ---------------------------------------------------------
 desc('Set correct permissions');
 task('fix:permissions', function () {
-    // Rechte im aktuellen Release setzen
     run('find {{release_path}} -type d -exec chmod 2770 {} + || true');
     run('find {{release_path}} -type f -exec chmod 0660 {} + || true');
 
-    // Shared-Ordner prüfen und Rechte anpassen
     $sharedDirs = [
         '{{deploy_path}}/shared/public/fileadmin',
         '{{deploy_path}}/shared/public/uploads',
@@ -99,9 +97,3 @@ task('rollback', function () {
     invoke('fix:permissions');
     invoke('typo3:cache:flush');
 });
-
-// ---------------------------------------------------------
-// Hinweis für Build
-// ---------------------------------------------------------
-// Der Vite-Build wird automatisch in GitHub Actions ausgeführt.
-// Auf dem Server ist kein Node.js oder npm nötig.

@@ -3,50 +3,25 @@ name: Deploy to Live Server
 on:
   push:
     branches:
-      - main # Deployment wird nur bei Push auf den main-Branch ausgeführt
+      - main
 
 jobs:
   deploy:
-    runs-on: ubuntu-latest # Aktuellstes Ubuntu-Image als Basis
+    runs-on: ubuntu-latest
 
     steps:
-      # 1. Repository auschecken
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. PHP einrichten (für Composer)
       - name: Set up PHP
         uses: shivammathur/setup-php@v2
         with:
           php-version: "8.3"
           tools: composer
 
-      # 3. PHP-Abhängigkeiten installieren
       - name: Install Composer dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
-      # 4. Node.js für Vite einrichten
-      - name: Set up Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: "20"
-
-      # 5. Node-Module cachen, um die Build-Zeit zu verkürzen
-      - name: Cache node modules
-        uses: actions/cache@v4
-        with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('package-lock.json') }}
-          restore-keys: |
-            ${{ runner.os }}-node-
-
-      # 6. Node-Abhängigkeiten installieren und Vite-Build starten
-      - name: Install Node dependencies and build assets
-        run: |
-          npm ci
-          npm run build
-
-      # 7. SSH-Zugang für den Server konfigurieren
       - name: Configure SSH
         run: |
           mkdir -p ~/.ssh
@@ -54,7 +29,6 @@ jobs:
           chmod 600 ~/.ssh/id_deploy
           ssh-keyscan -H "${{ secrets.DEPLOY_HOST }}" >> ~/.ssh/known_hosts
 
-      # 8. Mit Deployer das Deployment auf den Live-Server durchführen
       - name: Run Deployer
         env:
           DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
