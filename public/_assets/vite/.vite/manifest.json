@@ -1,0 +1,11 @@
+{
+  "packages/profil/Resources/Private/Main.entry.js": {
+    "file": "assets/Main.entry-DFV-lIGf.js",
+    "name": "Main.entry",
+    "src": "packages/profil/Resources/Private/Main.entry.js",
+    "isEntry": true,
+    "css": [
+      "assets/Main-DcNSXAxK.css"
+    ]
+  }
+}
